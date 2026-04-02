@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesica CRM</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#EAE2CF;
+  --surface:#f0ead8;
+  --surface2:#e2d9c0;
+  --surface3:#d8ceb5;
+  --text:#195740;
+  --muted:#4a7a60;
+  --border:rgba(25,87,64,0.12);
+  --border2:rgba(25,87,64,0.28);
+  --green:#195740;
+  --green-light:#1e6b4e;
+  --green-bg:rgba(25,87,64,0.10);
+  --green-border:rgba(25,87,64,0.30);
+  --red:#b03030;
+  --red-bg:rgba(176,48,48,0.10);
+  --red-border:rgba(176,48,48,0.25);
+  --font:system-ui,-apple-system,sans-serif;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+input,select,textarea{font-family:var(--font);background:var(--surface);color:var(--text);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:8px 11px;font-size:13px;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:#195740}
+select option{background:#e2d9c0;color:#195740}
+button{cursor:pointer;font-family:var(--font);font-size:13px;border-radius:var(--r-sm);transition:all .15s}
+::placeholder{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div style="background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:100px">
+  <img id="logo" src="logo.png" style="height:84px;opacity:0.95" alt="Vesica Estudio">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:12px;color:var(--muted)">Pipeline de ventas</span>
+    <button onclick="openModal()" style="padding:7px 16px;background:#195740;color:#EAE2CF;border:none;font-weight:500">+ Nuevo</button>
+  </div>
+</div>
+
+<div style="padding:1.5rem;max-width:1300px;margin:0 auto">
+  <div id="metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem"></div>
+  <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
+    <input id="search" oninput="render()" placeholder="Buscar..." style="flex:1;min-width:180px">
+    <select id="filterStage" onchange="render()">
+      <option value="">Todas las etapas</option>
+      <option>Primer contacto</option><option>Calificación</option><option>Propuesta</option><option>Negociación</option><option>Cierre</option>
+    </select>
+  </div>
+  <div id="loading" style="text-align:center;padding:2rem;color:var(--muted);font-size:13px">Cargando prospectos...</div>
+  <div style="overflow-x:auto;padding-bottom:12px">
+    <div id="columns" style="display:flex;gap:10px;min-width:750px"></div>
+  </div>
+</div>
+
+<div id="overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--r-lg);padding:1.75rem;width:92%;max-width:460px;max-height:92vh;overflow-y:auto">
+    <h3 id="modalTitle" style="font-size:15px;font-weight:500;margin-bottom:1.2rem;color:#195740">Nuevo prospecto</h3>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Nombre *</label><input id="f-name" style="width:100%"></div>
+      <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Empresa</label><input id="f-company" style="width:100%"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Email</label><input id="f-email" type="email" style="width:100%"></div>
+        <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Teléfono</label><input id="f-phone" style="width:100%"></div>
+      </div>
+      <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Valor estimado ($)</label><input id="f-value" type="number" min="0" style="width:100%"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Etapa</label>
+          <select id="f-stage" style="width:100%">
+            <option>Primer contacto</option><option>Calificación</option><option>Propuesta</option><option>Negociación</option><option>Cierre</option>
+          </select>
+        </div>
+        <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Resultado</label>
+          <select id="f-result" style="width:100%">
+            <option value="">En progreso</option><option value="ganado">Ganado</option><option value="perdido">Perdido</option>
+          </select>
+        </div>
+      </div>
+      <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Próxima acción</label><input id="f-next" placeholder="Ej: Llamada de seguimiento" style="width:100%"></div>
+      <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Notas</label><textarea id="f-notes" rows="2" style="width:100%;resize:vertical"></textarea></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.3rem">
+      <button id="deleteBtn" onclick="deleteProspect()" style="display:none;padding:7px 14px;background:var(--red-bg);color:var(--red);border:0.5px solid var(--red-border)">Eliminar</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button onclick="closeModal()" style="padding:7px 14px;background:transparent;border:0.5px solid var(--border2);color:var(--muted)">Cancelar</button>
+        <button onclick="saveProspect()" style="padding:7px 18px;background:#195740;color:#EAE2CF;border:none;font-weight:500">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbxdFFDMKPkE1N-C7kY1cO64q25BYG0HgNUOJKHWJTAGu85qi2PLJEDMjaM-PXwcvLau/exec';
+const STAGES = ['Primer contacto','Calificación','Propuesta','Negociación','Cierre'];
+const ACCENTS = ['#195740','#1e6b4e','#2a8060','#3a7050','#145035'];
+const ACCENT_BG = ['rgba(25,87,64,0.10)','rgba(30,107,78,0.10)','rgba(42,128,96,0.10)','rgba(58,112,80,0.10)','rgba(20,80,53,0.10)'];
+
+let prospects = [];
+let editId = null;
+
+// JSONP — única forma de evitar CORS con Google Apps Script
+function jsonpFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timeout'));
+    }, 10000);
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error('Script error')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+    document.body.appendChild(script);
+  });
+}
+
+function showToast(msg, ok=true) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;transition:opacity .4s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = ok ? '#195740' : '#b03030';
+  t.style.color = '#EAE2CF';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 2800);
+}
+
+async function loadProspects() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('columns').innerHTML = '';
+  try {
+    const data = await jsonpFetch(API_URL + '?action=getAll');
+    prospects = data.prospects || [];
+    document.getElementById('loading').style.display = 'none';
+    render();
+  } catch(e) {
+    document.getElementById('loading').textContent = 'Error al cargar. Revisá la consola.';
+    console.error('loadProspects error:', e);
+  }
+}
+
+function initials(n) { return String(n).split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase(); }
+function fmtVal(v) { return v ? '$' + Number(v).toLocaleString('es-AR') : '-'; }
+
+function metrics() {
+  const total = prospects.length;
+  const won = prospects.filter(p => p.result === 'ganado').length;
+  const pipeline = prospects.filter(p => !p.result).reduce((a,p) => a + (+p.value||0), 0);
+  const wonVal = prospects.filter(p => p.result === 'ganado').reduce((a,p) => a + (+p.value||0), 0);
+  const mk = (label, val, color) => `<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);padding:14px 16px">
+    <p style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${label}</p>
+    <p style="font-size:24px;font-weight:500;color:${color}">${val}</p>
+  </div>`;
+  document.getElementById('metrics').innerHTML =
+    mk('Prospectos', total, '#195740') +
+    mk('Pipeline', '$' + Math.round(pipeline/1000) + 'k', '#195740') +
+    mk('Ganados', won, '#1e6b4e') +
+    mk('Facturado', '$' + Math.round(wonVal/1000) + 'k', '#1e6b4e');
+}
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fs = document.getElementById('filterStage').value;
+  metrics();
+  const cols = document.getElementById('columns');
+  cols.innerHTML = '';
+  STAGES.forEach((stage, si) => {
+    const filtered = prospects.filter(p => {
+      const mQ = !q || (String(p.name)+String(p.company)+String(p.email)).toLowerCase().includes(q);
+      const mS = !fs || p.stage === fs;
+      return p.stage === stage && mQ && mS;
+    });
+    const col = document.createElement('div');
+    col.style.cssText = 'flex:0 0 210px;min-width:0';
+    col.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${ACCENTS[si]};display:inline-block"></span>
+          <span style="font-size:12px;font-weight:500;color:#195740">${stage}</span>
+        </div>
+        <span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:1px 8px;border-radius:20px">${filtered.length}</span>
+      </div>
+      <div>${filtered.map(p => {
+        let badge = '';
+        if (p.result === 'ganado') badge = `<span style="font-size:10px;background:var(--green-bg);color:#195740;padding:2px 8px;border-radius:20px;border:0.5px solid var(--green-border)">Ganado</span>`;
+        if (p.result === 'perdido') badge = `<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:20px;border:0.5px solid var(--red-border)">Perdido</span>`;
+        return `<div onclick="editProspect('${p.id}')" style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+            <div style="width:30px;height:30px;border-radius:50%;background:${ACCENT_BG[si]};border:0.5px solid ${ACCENTS[si]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:${ACCENTS[si]};flex-shrink:0">${initials(p.name)}</div>
+            <div style="min-width:0">
+              <p style="font-size:13px;font-weight:500;color:#195740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</p>
+              ${p.company ? `<p style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.company}</p>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:12px;font-weight:500;color:#195740">${fmtVal(p.value)}</span>
+            ${badge}
+          </div>
+          ${p.next ? `<p style="font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">→ ${p.next}</p>` : ''}
+        </div>`;
+      }).join('')}</div>`;
+    cols.appendChild(col);
+  });
+}
+
+function openModal(reset=true) {
+  if (reset) {
+    editId = null;
+    document.getElementById('modalTitle').textContent = 'Nuevo prospecto';
+    document.getElementById('deleteBtn').style.display = 'none';
+    ['name','company','email','phone','value','next','notes'].forEach(f => document.getElementById('f-'+f).value = '');
+    document.getElementById('f-stage').value = 'Primer contacto';
+    document.getElementById('f-result').value = '';
+  }
+  document.getElementById('overlay').style.display = 'flex';
+}
+function closeModal() { document.getElementById('overlay').style.display = 'none'; }
+
+function editProspect(id) {
+  const p = prospects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  editId = id;
+  document.getElementById('modalTitle').textContent = 'Editar prospecto';
+  document.getElementById('deleteBtn').style.display = 'block';
+  document.getElementById('f-name').value = p.name || '';
+  document.getElementById('f-company').value = p.company || '';
+  document.getElementById('f-email').value = p.email || '';
+  document.getElementById('f-phone').value = p.phone || '';
+  document.getElementById('f-value').value = p.value || '';
+  document.getElementById('f-stage').value = p.stage || 'Primer contacto';
+  document.getElementById('f-result').value = p.result || '';
+  document.getElementById('f-next').value = p.next || '';
+  document.getElementById('f-notes').value = p.notes || '';
+  openModal(false);
+}
+
+async function saveProspect() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { document.getElementById('f-name').style.borderColor = '#b03030'; return; }
+  document.getElementById('f-name').style.borderColor = '';
+  const prospect = {
+    id: editId || '',
+    name,
+    company: document.getElementById('f-company').value.trim(),
+    email: document.getElementById('f-email').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    value: document.getElementById('f-value').value || 0,
+    stage: document.getElementById('f-stage').value,
+    result: document.getElementById('f-result').value,
+    next: document.getElementById('f-next').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  closeModal();
+  showToast('Guardando...');
+  try {
+    const url = API_URL + '?action=save&prospect=' + encodeURIComponent(JSON.stringify(prospect));
+    const data = await jsonpFetch(url);
+    if (data.success) {
+      showToast('Guardado correctamente ✓');
+      await loadProspects();
+    } else {
+      showToast('Error: ' + (data.error || 'desconocido'), false);
+    }
+  } catch(e) {
+    showToast('Error de conexión', false);
+    console.error('saveProspect error:', e);
+  }
+}
+
+async function deleteProspect() {
+  if (!editId || !confirm('¿Eliminar este prospecto?')) return;
+  closeModal();
+  showToast('Eliminando...');
+  try {
+    const url = API_URL + '?action=delete&id=' + encodeURIComponent(editId);
+    const data = await jsonpFetch(url);
+    if (data.success) {
+      showToast('Eliminado correctamente ✓');
+      await loadProspects();
+    } else {
+      showToast('Error: ' + (data.error || 'desconocido'), false);
+    }
+  } catch(e) {
+    showToast('Error de conexión', false);
+    console.error('deleteProspect error:', e);
+  }
+}
+
+document.getElementById('overlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+// logo loaded from file
+loadProspects();
+</script>
+</body>
+</html>
