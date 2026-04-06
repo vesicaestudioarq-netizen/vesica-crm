@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#EAE2CF;--surface:#f0ead8;--surface2:#e2d9c0;
+  --bg:#EAE2CF;--surface:#f0ead8;--surface2:#e2d9c0;--surface3:#d8ceb5;
   --text:#195740;--muted:#4a7a60;
   --border:rgba(25,87,64,0.12);--border2:rgba(25,87,64,0.28);
   --red:#b03030;--red-bg:rgba(176,48,48,0.10);--red-border:rgba(176,48,48,0.25);
@@ -20,19 +20,53 @@ input:focus,select:focus,textarea:focus{border-color:#195740}
 select option{background:#e2d9c0;color:#195740}
 button{cursor:pointer;font-family:var(--font);font-size:13px;border-radius:var(--r-sm);transition:all .15s}
 ::placeholder{color:var(--muted)}
+
+/* tabs */
+.tab-btn{padding:8px 18px;background:transparent;border:0.5px solid var(--border2);color:var(--muted);margin-right:6px}
+.tab-btn.active{background:#195740;color:#EAE2CF;border-color:#195740}
+
+/* checklist */
+.phase-block{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);margin-bottom:10px;overflow:hidden}
+.phase-header{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.phase-header:hover{background:var(--surface2)}
+.phase-title{font-size:13px;font-weight:500;color:#195740}
+.phase-meta{font-size:11px;color:var(--muted)}
+.phase-body{padding:0 14px 12px;border-top:0.5px solid var(--border)}
+.task-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)}
+.task-row:last-child{border-bottom:none}
+.task-check{width:16px;height:16px;border:1.5px solid var(--border2);border-radius:3px;cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.task-check.done{background:#195740;border-color:#195740}
+.task-check.done::after{content:'✓';color:#EAE2CF;font-size:10px;font-weight:700}
+.task-label{font-size:13px;color:#195740;line-height:1.4}
+.task-label.done{text-decoration:line-through;color:var(--muted)}
+.task-days{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* progress bar */
+.progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;background:#195740;border-radius:2px;transition:width .3s}
 </style>
 </head>
 <body>
 
+<!-- TOPBAR -->
 <div style="background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:100px">
   <img src="logo.png" style="height:84px;opacity:0.95" alt="Vesica Estudio">
   <div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:12px;color:var(--muted)">Pipeline de ventas</span>
-    <button onclick="openModal()" style="padding:7px 16px;background:#195740;color:#EAE2CF;border:none;font-weight:500">+ Nuevo</button>
+    <span style="font-size:12px;color:var(--muted)" id="tabLabel">Pipeline de ventas</span>
+    <button onclick="openModal()" id="btnNuevo" style="padding:7px 16px;background:#195740;color:#EAE2CF;border:none;font-weight:500">+ Nuevo</button>
   </div>
 </div>
 
-<div style="padding:1.5rem;max-width:1300px;margin:0 auto">
+<!-- TABS -->
+<div style="background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 1.5rem">
+  <div style="display:flex;padding:10px 0;gap:6px">
+    <button class="tab-btn active" onclick="switchTab('pipeline')">Pipeline</button>
+    <button class="tab-btn" onclick="switchTab('onboarding')">Onboarding</button>
+  </div>
+</div>
+
+<!-- PIPELINE TAB -->
+<div id="tab-pipeline" style="padding:1.5rem;max-width:1300px;margin:0 auto">
   <div id="metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem"></div>
   <div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap">
     <input id="search" oninput="render()" placeholder="Buscar..." style="flex:1;min-width:180px">
@@ -47,6 +81,13 @@ button{cursor:pointer;font-family:var(--font);font-size:13px;border-radius:var(-
   </div>
 </div>
 
+<!-- ONBOARDING TAB -->
+<div id="tab-onboarding" style="display:none;padding:1.5rem;max-width:900px;margin:0 auto">
+  <div id="ob-empty" style="text-align:center;padding:3rem;color:var(--muted);font-size:13px">No hay clientes ganados todavía.</div>
+  <div id="ob-list"></div>
+</div>
+
+<!-- MODAL PROSPECTO -->
 <div id="overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--r-lg);padding:1.75rem;width:92%;max-width:460px;max-height:92vh;overflow-y:auto">
     <h3 id="modalTitle" style="font-size:15px;font-weight:500;margin-bottom:1.2rem;color:#195740">Nuevo prospecto</h3>
@@ -89,202 +130,277 @@ const STAGES = ['Primer contacto','Calificación','Propuesta','Negociación','Ci
 const ACCENTS = ['#195740','#1e6b4e','#2a8060','#3a7050','#145035'];
 const ACCENT_BG = ['rgba(25,87,64,0.10)','rgba(30,107,78,0.10)','rgba(42,128,96,0.10)','rgba(58,112,80,0.10)','rgba(20,80,53,0.10)'];
 
+// Onboarding template
+const OB_PHASES = [
+  {
+    id:'p1', label:'Fase 1 — Primer contacto', days:'Días 1-2',
+    tasks:[
+      {id:'t1a', label:'Calificación inicial del cliente'},
+      {id:'t1b', label:'Email de bienvenida enviado'},
+      {id:'t1c', label:'Agenda de discovery confirmada'},
+    ]
+  },
+  {
+    id:'p2', label:'Fase 2 — Discovery', days:'Días 3-7',
+    tasks:[
+      {id:'t2a', label:'Cuestionario de discovery enviado'},
+      {id:'t2b', label:'Reunión de discovery realizada'},
+      {id:'t2c', label:'Problema central documentado'},
+      {id:'t2d', label:'Necesidades y expectativas validadas'},
+    ]
+  },
+  {
+    id:'p3', label:'Fase 3 — Propuesta', days:'Días 7-14',
+    tasks:[
+      {id:'t3a', label:'Alcance del proyecto definido'},
+      {id:'t3b', label:'Entregables documentados'},
+      {id:'t3c', label:'Condiciones y honorarios definidos'},
+      {id:'t3d', label:'Propuesta enviada por escrito'},
+      {id:'t3e', label:'Propuesta firmada por el cliente'},
+    ]
+  },
+  {
+    id:'p4', label:'Fase 4 — Kickoff', days:'Día 1 oficial',
+    tasks:[
+      {id:'t4a', label:'Reunión de kickoff realizada'},
+      {id:'t4b', label:'Acta de kickoff redactada'},
+      {id:'t4c', label:'Acta de kickoff firmada por ambas partes'},
+      {id:'t4d', label:'Equipo interno alineado'},
+      {id:'t4e', label:'Accesos y recursos compartidos con el cliente'},
+    ]
+  },
+  {
+    id:'p5', label:'Fase 5 — Seguimiento', days:'Ongoing',
+    tasks:[
+      {id:'t5a', label:'Reporte semanal — semana 1'},
+      {id:'t5b', label:'Reporte semanal — semana 2'},
+      {id:'t5c', label:'Reporte semanal — semana 3'},
+      {id:'t5d', label:'Riesgos identificados y documentados'},
+      {id:'t5e', label:'Revisión de satisfacción del cliente'},
+    ]
+  },
+];
+
 let prospects = [];
 let editId = null;
+let currentTab = 'pipeline';
+// onboarding checks stored locally per session + localStorage
+let obChecks = {};
+try { obChecks = JSON.parse(localStorage.getItem('vesica_ob') || '{}'); } catch(e){}
 
+function saveObChecks() {
+  try { localStorage.setItem('vesica_ob', JSON.stringify(obChecks)); } catch(e){}
+}
+
+// JSONP
 function jsonpFetch(url) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb' + Date.now() + Math.floor(Math.random()*99999);
     const script = document.createElement('script');
     const timer = setTimeout(() => { cleanup(); reject(new Error('Timeout')); }, 15000);
-    function cleanup() {
-      clearTimeout(timer);
-      try { delete window[cbName]; } catch(e) {}
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
+    function cleanup() { clearTimeout(timer); try{delete window[cbName];}catch(e){} if(script.parentNode) script.parentNode.removeChild(script); }
     window[cbName] = function(data) { cleanup(); resolve(data); };
-    script.onerror = function() { cleanup(); reject(new Error('Script load error')); };
-    const sep = url.indexOf('?') >= 0 ? '&' : '?';
-    script.src = url + sep + 'callback=' + cbName + '&t=' + Date.now();
+    script.onerror = function() { cleanup(); reject(new Error('Error')); };
+    script.src = url + (url.includes('?')?'&':'?') + 'callback=' + cbName + '&t=' + Date.now();
     document.head.appendChild(script);
   });
 }
 
 function showToast(msg, ok=true) {
   let t = document.getElementById('_toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = '_toast';
-    t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:opacity .4s;pointer-events:none;opacity:0';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.background = ok ? '#195740' : '#b03030';
-  t.style.color = '#EAE2CF';
-  t.style.opacity = '1';
-  clearTimeout(t._t);
-  t._t = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+  if (!t) { t=document.createElement('div');t.id='_toast';t.style.cssText='position:fixed;bottom:24px;right:24px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:opacity .4s;pointer-events:none;opacity:0';document.body.appendChild(t); }
+  t.textContent=msg; t.style.background=ok?'#195740':'#b03030'; t.style.color='#EAE2CF'; t.style.opacity='1';
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity='0',3000);
 }
 
 async function loadProspects() {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('columns').innerHTML = '';
+  document.getElementById('loading').style.display='block';
+  document.getElementById('columns').innerHTML='';
   try {
-    const data = await jsonpFetch(API_URL + '?action=getAll');
+    const data = await jsonpFetch(API_URL+'?action=getAll');
     prospects = Array.isArray(data.prospects) ? data.prospects : [];
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById('loading').style.display='none';
     render();
+    renderOnboarding();
   } catch(e) {
-    document.getElementById('loading').textContent = 'Error al cargar. Revisá tu conexión.';
-    console.error('loadProspects:', e);
+    document.getElementById('loading').textContent='Error al cargar. Revisá tu conexión.';
+    console.error(e);
   }
 }
 
-function initials(n) { return String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
-function fmtVal(v) { return v && v != 0 ? '$' + Number(v).toLocaleString('es-AR') : '-'; }
-
-function metrics() {
-  const total = prospects.length;
-  const won = prospects.filter(p => p.result === 'ganado').length;
-  const pipeline = prospects.filter(p => p.result !== 'ganado' && p.result !== 'perdido').reduce((a,p) => a+(+p.value||0), 0);
-  const wonVal = prospects.filter(p => p.result === 'ganado').reduce((a,p) => a+(+p.value||0), 0);
-  const mk = (label, val, color) => `<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);padding:14px 16px"><p style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${label}</p><p style="font-size:22px;font-weight:500;color:${color}">${val}</p></div>`;
-  document.getElementById('metrics').innerHTML =
-    mk('Prospectos', total, '#195740') +
-    mk('Pipeline', '$' + Math.round(pipeline/1000) + 'k', '#195740') +
-    mk('Ganados', won, '#1e6b4e') +
-    mk('Facturado', '$' + Math.round(wonVal/1000) + 'k', '#1e6b4e');
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-pipeline').style.display = tab==='pipeline'?'block':'none';
+  document.getElementById('tab-onboarding').style.display = tab==='onboarding'?'block':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', (i===0&&tab==='pipeline')||(i===1&&tab==='onboarding'));
+  });
+  document.getElementById('tabLabel').textContent = tab==='pipeline'?'Pipeline de ventas':'Onboarding de clientes';
+  document.getElementById('btnNuevo').style.display = tab==='pipeline'?'block':'none';
+  if(tab==='onboarding') renderOnboarding();
 }
 
-function render() {
-  const q = document.getElementById('search').value.toLowerCase();
-  const fs = document.getElementById('filterStage').value;
-  metrics();
-  const cols = document.getElementById('columns');
-  cols.innerHTML = '';
-  STAGES.forEach((stage, si) => {
-    const filtered = prospects.filter(p => {
-      const mQ = !q || (String(p.name||'')+String(p.company||'')+String(p.email||'')).toLowerCase().includes(q);
-      const mS = !fs || p.stage === fs;
-      return p.stage === stage && mQ && mS;
-    });
-    const col = document.createElement('div');
-    col.style.cssText = 'flex:0 0 210px;min-width:0';
-    col.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px">
-        <div style="display:flex;align-items:center;gap:7px">
-          <span style="width:8px;height:8px;border-radius:50%;background:${ACCENTS[si]};display:inline-block"></span>
-          <span style="font-size:12px;font-weight:500;color:#195740">${stage}</span>
+function renderOnboarding() {
+  const ganados = prospects.filter(p => p.result === 'ganado');
+  const empty = document.getElementById('ob-empty');
+  const list = document.getElementById('ob-list');
+  if (ganados.length === 0) { empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display='none';
+  list.innerHTML = ganados.map(p => {
+    const pid = String(p.id);
+    if (!obChecks[pid]) obChecks[pid] = {};
+    const allTasks = OB_PHASES.flatMap(ph => ph.tasks);
+    const done = allTasks.filter(t => obChecks[pid][t.id]).length;
+    const pct = Math.round(done/allTasks.length*100);
+    return `<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-lg);margin-bottom:1.2rem;overflow:hidden">
+      <div style="padding:16px 18px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <p style="font-size:15px;font-weight:500;color:#195740">${p.name}</p>
+          ${p.company?`<p style="font-size:12px;color:var(--muted)">${p.company}</p>`:''}
         </div>
-        <span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:1px 8px;border-radius:20px">${filtered.length}</span>
+        <div style="text-align:right">
+          <p style="font-size:13px;font-weight:500;color:#195740">${pct}% completado</p>
+          <div class="progress-bar" style="width:160px;margin-top:6px"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
       </div>
-      <div>${filtered.map(p => {
-        let badge = '';
-        if (p.result === 'ganado') badge = `<span style="font-size:10px;background:rgba(25,87,64,0.12);color:#195740;padding:2px 8px;border-radius:20px;border:0.5px solid rgba(25,87,64,0.30)">Ganado</span>`;
-        if (p.result === 'perdido') badge = `<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:20px;border:0.5px solid var(--red-border)">Perdido</span>`;
-        return `<div onclick="editProspect('${p.id}')" style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
-            <div style="width:30px;height:30px;border-radius:50%;background:${ACCENT_BG[si]};border:0.5px solid ${ACCENTS[si]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:${ACCENTS[si]};flex-shrink:0">${initials(p.name)}</div>
-            <div style="min-width:0">
-              <p style="font-size:13px;font-weight:500;color:#195740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name||''}</p>
-              ${p.company ? `<p style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.company}</p>` : ''}
+      <div style="padding:14px 18px">
+        ${OB_PHASES.map(ph => {
+          const phaseDone = ph.tasks.filter(t => obChecks[pid][t.id]).length;
+          return `<div class="phase-block">
+            <div class="phase-header" onclick="togglePhase('${pid}','${ph.id}')">
+              <div>
+                <span class="phase-title">${ph.label}</span>
+                <span style="font-size:11px;color:var(--muted);margin-left:8px">${ph.days}</span>
+              </div>
+              <span class="phase-meta">${phaseDone}/${ph.tasks.length} <span id="arrow-${pid}-${ph.id}">▸</span></span>
             </div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:12px;font-weight:500;color:#195740">${fmtVal(p.value)}</span>
-            ${badge}
-          </div>
-          ${p.next ? `<p style="font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">→ ${p.next}</p>` : ''}
-        </div>`;
-      }).join('')}</div>`;
+            <div class="phase-body" id="pb-${pid}-${ph.id}" style="display:none">
+              ${ph.tasks.map(t => {
+                const checked = !!obChecks[pid][t.id];
+                return `<div class="task-row">
+                  <div class="task-check${checked?' done':''}" id="chk-${pid}-${t.id}" onclick="toggleTask('${pid}','${t.id}')"></div>
+                  <span class="task-label${checked?' done':''}" id="lbl-${pid}-${t.id}">${t.label}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function togglePhase(pid, phid) {
+  const body = document.getElementById('pb-'+pid+'-'+phid);
+  const arrow = document.getElementById('arrow-'+pid+'-'+phid);
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  arrow.textContent = open ? '▸' : '▾';
+}
+
+function toggleTask(pid, tid) {
+  if (!obChecks[pid]) obChecks[pid] = {};
+  obChecks[pid][tid] = !obChecks[pid][tid];
+  saveObChecks();
+  const chk = document.getElementById('chk-'+pid+'-'+tid);
+  const lbl = document.getElementById('lbl-'+pid+'-'+tid);
+  if (chk) { chk.classList.toggle('done', obChecks[pid][tid]); }
+  if (lbl) { lbl.classList.toggle('done', obChecks[pid][tid]); }
+  renderOnboarding();
+}
+
+function initials(n){return String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function fmtVal(v){return v&&v!=0?'$'+Number(v).toLocaleString('es-AR'):'-';}
+
+function metrics(){
+  const total=prospects.length;
+  const won=prospects.filter(p=>p.result==='ganado').length;
+  const pipeline=prospects.filter(p=>p.result!=='ganado'&&p.result!=='perdido').reduce((a,p)=>a+(+p.value||0),0);
+  const wonVal=prospects.filter(p=>p.result==='ganado').reduce((a,p)=>a+(+p.value||0),0);
+  const mk=(label,val,color)=>`<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);padding:14px 16px"><p style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${label}</p><p style="font-size:22px;font-weight:500;color:${color}">${val}</p></div>`;
+  document.getElementById('metrics').innerHTML=mk('Prospectos',total,'#195740')+mk('Pipeline','$'+Math.round(pipeline/1000)+'k','#195740')+mk('Ganados',won,'#1e6b4e')+mk('Facturado','$'+Math.round(wonVal/1000)+'k','#1e6b4e');
+}
+
+function render(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const fs=document.getElementById('filterStage').value;
+  metrics();
+  const cols=document.getElementById('columns');cols.innerHTML='';
+  STAGES.forEach((stage,si)=>{
+    const filtered=prospects.filter(p=>{
+      const mQ=!q||(String(p.name||'')+String(p.company||'')+String(p.email||'')).toLowerCase().includes(q);
+      const mS=!fs||p.stage===fs;
+      return p.stage===stage&&mQ&&mS;
+    });
+    const col=document.createElement('div');col.style.cssText='flex:0 0 210px;min-width:0';
+    col.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px">
+      <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:${ACCENTS[si]};display:inline-block"></span><span style="font-size:12px;font-weight:500;color:#195740">${stage}</span></div>
+      <span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:1px 8px;border-radius:20px">${filtered.length}</span>
+    </div>
+    <div>${filtered.map(p=>{
+      let badge='';
+      if(p.result==='ganado') badge=`<span style="font-size:10px;background:rgba(25,87,64,0.12);color:#195740;padding:2px 8px;border-radius:20px;border:0.5px solid rgba(25,87,64,0.30)">Ganado</span>`;
+      if(p.result==='perdido') badge=`<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:20px;border:0.5px solid var(--red-border)">Perdido</span>`;
+      const obDone = p.result==='ganado' ? (() => {
+        const pid=String(p.id); const checks=obChecks[pid]||{};
+        const all=OB_PHASES.flatMap(ph=>ph.tasks);
+        const d=all.filter(t=>checks[t.id]).length;
+        return `<span style="font-size:10px;color:var(--muted)">OB ${Math.round(d/all.length*100)}%</span>`;
+      })() : '';
+      return `<div onclick="editProspect('${p.id}')" style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-md);padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <div style="width:30px;height:30px;border-radius:50%;background:${ACCENT_BG[si]};border:0.5px solid ${ACCENTS[si]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:${ACCENTS[si]};flex-shrink:0">${initials(p.name)}</div>
+          <div style="min-width:0"><p style="font-size:13px;font-weight:500;color:#195740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name||''}</p>${p.company?`<p style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.company}</p>`:''}</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:500;color:#195740">${fmtVal(p.value)}</span>${badge||obDone}</div>
+        ${p.next?`<p style="font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">→ ${p.next}</p>`:''}
+      </div>`;
+    }).join('')}</div>`;
     cols.appendChild(col);
   });
 }
 
-function openModal(reset=true) {
-  if (reset) {
-    editId = null;
-    document.getElementById('modalTitle').textContent = 'Nuevo prospecto';
-    document.getElementById('deleteBtn').style.display = 'none';
-    ['name','company','email','phone','value','next','notes'].forEach(f => document.getElementById('f-'+f).value = '');
-    document.getElementById('f-stage').value = 'Primer contacto';
-    document.getElementById('f-result').value = '';
-  }
-  document.getElementById('overlay').style.display = 'flex';
+function openModal(reset=true){
+  if(reset){editId=null;document.getElementById('modalTitle').textContent='Nuevo prospecto';document.getElementById('deleteBtn').style.display='none';['name','company','email','phone','value','next','notes'].forEach(f=>document.getElementById('f-'+f).value='');document.getElementById('f-stage').value='Primer contacto';document.getElementById('f-result').value='';}
+  document.getElementById('overlay').style.display='flex';
 }
-function closeModal() { document.getElementById('overlay').style.display = 'none'; }
+function closeModal(){document.getElementById('overlay').style.display='none';}
 
-function editProspect(id) {
-  const p = prospects.find(x => String(x.id) === String(id));
-  if (!p) return;
-  editId = id;
-  document.getElementById('modalTitle').textContent = 'Editar prospecto';
-  document.getElementById('deleteBtn').style.display = 'block';
-  document.getElementById('f-name').value = p.name || '';
-  document.getElementById('f-company').value = p.company || '';
-  document.getElementById('f-email').value = p.email || '';
-  document.getElementById('f-phone').value = p.phone || '';
-  document.getElementById('f-value').value = p.value || '';
-  document.getElementById('f-stage').value = p.stage || 'Primer contacto';
-  document.getElementById('f-result').value = p.result || '';
-  document.getElementById('f-next').value = p.next || '';
-  document.getElementById('f-notes').value = p.notes || '';
+function editProspect(id){
+  const p=prospects.find(x=>String(x.id)===String(id));if(!p)return;
+  editId=id;
+  document.getElementById('modalTitle').textContent='Editar prospecto';
+  document.getElementById('deleteBtn').style.display='block';
+  document.getElementById('f-name').value=p.name||'';document.getElementById('f-company').value=p.company||'';document.getElementById('f-email').value=p.email||'';document.getElementById('f-phone').value=p.phone||'';document.getElementById('f-value').value=p.value||'';document.getElementById('f-stage').value=p.stage||'Primer contacto';document.getElementById('f-result').value=p.result||'';document.getElementById('f-next').value=p.next||'';document.getElementById('f-notes').value=p.notes||'';
   openModal(false);
 }
 
-async function saveProspect() {
-  const name = document.getElementById('f-name').value.trim();
-  if (!name) { document.getElementById('f-name').style.borderColor = '#b03030'; return; }
-  document.getElementById('f-name').style.borderColor = '';
-  const prospect = {
-    id: editId || '',
-    name,
-    company: document.getElementById('f-company').value.trim(),
-    email: document.getElementById('f-email').value.trim(),
-    phone: document.getElementById('f-phone').value.trim(),
-    value: document.getElementById('f-value').value || 0,
-    stage: document.getElementById('f-stage').value,
-    result: document.getElementById('f-result').value,
-    next: document.getElementById('f-next').value.trim(),
-    notes: document.getElementById('f-notes').value.trim(),
-  };
-  closeModal();
-  showToast('Guardando...');
-  try {
-    const url = API_URL + '?action=save&prospect=' + encodeURIComponent(JSON.stringify(prospect));
-    const data = await jsonpFetch(url);
-    if (data.success) {
-      showToast('Guardado ✓');
-      await loadProspects();
-    } else {
-      showToast('Error: ' + (data.error || 'desconocido'), false);
-    }
-  } catch(e) {
-    showToast('Error de conexión', false);
-    console.error('saveProspect:', e);
-  }
+async function saveProspect(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){document.getElementById('f-name').style.borderColor='#b03030';return;}
+  document.getElementById('f-name').style.borderColor='';
+  const prospect={id:editId||'',name,company:document.getElementById('f-company').value.trim(),email:document.getElementById('f-email').value.trim(),phone:document.getElementById('f-phone').value.trim(),value:document.getElementById('f-value').value||0,stage:document.getElementById('f-stage').value,result:document.getElementById('f-result').value,next:document.getElementById('f-next').value.trim(),notes:document.getElementById('f-notes').value.trim()};
+  closeModal();showToast('Guardando...');
+  try{
+    const url=API_URL+'?action=save&prospect='+encodeURIComponent(JSON.stringify(prospect));
+    const data=await jsonpFetch(url);
+    if(data.success){showToast('Guardado ✓');await loadProspects();}
+    else showToast('Error: '+(data.error||'desconocido'),false);
+  }catch(e){showToast('Error de conexión',false);console.error(e);}
 }
 
-async function deleteProspect() {
-  if (!editId || !confirm('¿Eliminar este prospecto?')) return;
-  closeModal();
-  showToast('Eliminando...');
-  try {
-    const url = API_URL + '?action=delete&id=' + encodeURIComponent(editId);
-    const data = await jsonpFetch(url);
-    if (data.success) {
-      showToast('Eliminado ✓');
-      await loadProspects();
-    } else {
-      showToast('Error: ' + (data.error || 'desconocido'), false);
-    }
-  } catch(e) {
-    showToast('Error de conexión', false);
-    console.error('deleteProspect:', e);
-  }
+async function deleteProspect(){
+  if(!editId||!confirm('¿Eliminar este prospecto?'))return;
+  closeModal();showToast('Eliminando...');
+  try{
+    const url=API_URL+'?action=delete&id='+encodeURIComponent(editId);
+    const data=await jsonpFetch(url);
+    if(data.success){showToast('Eliminado ✓');await loadProspects();}
+    else showToast('Error: '+(data.error||'desconocido'),false);
+  }catch(e){showToast('Error de conexión',false);console.error(e);}
 }
 
-document.getElementById('overlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
 loadProspects();
 </script>
 </body>
